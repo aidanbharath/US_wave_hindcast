@@ -2,27 +2,26 @@
 
 #### This notebook demonstrates basic usage of the National Renewable Energy Laboratory (NREL) West Coast Wave Hindcast dataset. The data is provided from Amazon Web Services using the HDF Group's Highly Scalable Data Service (HSDS).
 
-#### For this to work you must first install h5pyd:
+#### For this example to work, the packages necessary can be installed via pip:
 
-pip install --user h5pyd
+pip install -r requirements.txt
 
-#### Next you'll need to configure HSDS:
+#### Next you'll need to configure h5pyd to access the data on HSDS:
 
 hsconfigure
 
 #### and enter at the prompt:
 
-hs_endpoint = https://developer.nrel.gov/api/hsds
-
-hs_username = None
-
-hs_password = None
-
-hs_api_key = 3K3JQbjZmWctY0xmIfSYvYgtIcM3CN0cb1Y2w9bf
+hs_endpoint = https://developer.nrel.gov/api/hsds   
+hs_username = None   
+hs_password = None   
+hs_api_key = 3K3JQbjZmWctY0xmIfSYvYgtIcM3CN0cb1Y2w9bf    
 
 #### The example API key here is for demonstation and is rate-limited per IP. To get your own API key, visit https://developer.nrel.gov/signup/
 
 #### You can also add the above contents to a configuration file at ~/.hscfg
+
+#### Finally, you can use Jupyter Notebook or Lab to view the example notebooks depending on your preference
 
 
 
@@ -31,9 +30,6 @@ import h5pyd
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
-from pyproj import Proj
-from scipy.spatial import cKDTree
 ```
 
 ### Basic Usage
@@ -42,44 +38,47 @@ The Wave Hindcast Dataset is provided in annual .h5 files and currently spans th
 
 Each year can be accessed from /nrel/us-wave/US_Wave_${year}.h5
 
+To open the desired year of Wave Hindcast data server endpoint, username, password is found via a config file
+
 
 ```python
-# Open the desired year of Wave Hindcast data
-# server endpoint, username, password is found via a config file
-
 waves = h5pyd.File(f'/nrel/us-wave/US_Wave_1990.h5','r')
 ```
 
 
 ```python
-list(waves.attrs) # list of base attributes of the dataset
+list(waves) # list of base attributes of the dataset
 ```
-
-
-
-
-    ['ref_IEC62600-101',
-     'ref_SWAN-Manual',
-     'ref_Wu-Wang-Yang-Garcia-Medina-2020',
-     'source',
-     'version']
-
-
 
 ## Datasets
 
-What follows are basic examples of navigating the dataset and discovering variables
+Each dataset quantity:
+
+- directionality_coefficient
+- energy_period
+- maximum_energy_direction
+- mean_absolute_period
+- mean_zero-crossing_period
+- omni-directional_wave_power
+- peak_period
+- significant_wave_height
+- spectral_width
+- water_depth
+
+is structured as ('time_index','coordinate')
 
 
 
 ```python
-# List the available dataset variable names within the dataset
-
-print(list(waves['coordinates'].attrs))
+# Shapes of datasets
+waves['significant_water_height'].shape # (time_index, coordinates)
 ```
 
-    ['description', 'dimensions', 'src_name', 'units']
 
+```python
+# List the available dataset variable names within the dataset
+print(list(waves['coordinates'].attrs))
+```
 
 
 ```python
@@ -89,11 +88,9 @@ meta = pd.DataFrame(waves['meta'][:])
 meta.head()
 ```
 
+# Basic Usage
 
-```python
-# Shapes of datasets
-waves['significant_water_height'].shape # (time, lon_lat)
-```
+The following examples illustrate basic spatial and timeseries based slicing techniques for the West Coast Wave Hindcast dataset, along with simple statistical analysis. 
 
 ## Time Slicing
 
@@ -125,10 +122,10 @@ Basic methods to quickly plot data from the Hindcast spatially and temporally
 
 ### Spatial Plots
 
+Coordinate pair indices are used to slice the datasets, and are accessed through the 'coordinates' attribute
+
 
 ```python
-# the view the available coordinates which are provided as lat,lon pairs
-
 coord_slice = 100
 
 print(f'Available attributes: {dict(waves["coordinates"].attrs)}')
@@ -157,12 +154,15 @@ df.plot.scatter(x='longitude', y='latitude', c='Hsig',
 plt.show()
 ```
 
-### Timeseries
+### Timeseries Plots
+
+Extracting a timeseries usually requires us to find a location of interest.      
+This can be done easially with KDTree, a function within scipy.spatial.   
+
 
 
 ```python
-# Extracting a timeseries usually requires us to find a location of interest.
-# This can be done easially with KDTree
+from scipy.spatial import cKDTree
 
 tree = cKDTree(coords)
 def nearest_site(tree, lat_coord, lon_coord):
@@ -190,10 +190,10 @@ dt.plot(y=var,title=f'Time sliced {var} Timeseries')
 
 ## Basic Statistics and Grouping
 
+Here is an example of grouping data to create quick plots of statistics
+
 
 ```python
-# Here is an example of grouping data to create quick plots of stats
-
 Vars =['significant_water_height','peak_period'] 
 variables = np.array([waves[Vars[0]][Aug,site_idx], waves[Vars[1]][Aug,site_idx]])
 
